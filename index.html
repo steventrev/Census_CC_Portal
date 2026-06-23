@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Census Data Portal</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; color: #333; }
+        .controls, .downloads { margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 5px; border: 1px solid #e0e0e0; }
+        select, button { padding: 8px 12px; margin-right: 10px; font-size: 14px; cursor: pointer; }
+        button { background-color: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        button.secondary { background-color: #6c757d; }
+        button.secondary:hover { background-color: #5a6268; }
+        
+        /* Table styles */
+        .table-section { margin-top: 40px; }
+        .table-header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 2px solid #333; padding-bottom: 5px; }
+        .table-header-container h3 { margin: 0; text-transform: capitalize; }
+        .table-wrapper { max-height: 400px; overflow-y: auto; border: 1px solid #ccc; margin-bottom: 20px; }
+        table { border-collapse: collapse; width: 100%; font-size: 13px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f4f4f4; position: sticky; top: 0; z-index: 10; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+
+    <h2>Census Data Portal</h2>
+
+    <div class="downloads">
+        <strong id="downloadLabel">Select a state to download master datasets:</strong><br><br>
+        <button id="masterBtn01" class="secondary" disabled>01 County Population Rank</button>
+        <button id="masterBtn02" class="secondary" disabled>02 Population Projections</button>
+    </div>
+    
+    <div class="controls">
+        <label for="stateSelect">State:</label>
+        <select id="stateSelect">
+            <option value="">-- Select State --</option>
+            <option value="17_Illinois">Illinois</option>
+            <option value="18_Indiana">Indiana</option>
+            <option value="21_Kentucky" selected>Kentucky</option>
+            <option value="39_Ohio">Ohio</option>
+            <option value="47_Tennessee">Tennessee</option>
+        </select>
+
+        <label for="countySelect">County:</label>
+        <select id="countySelect" disabled>
+            <option value="">-- Select County --</option>
+        </select>
+    </div>
+
+    <div id="reportContainer">
+        <p>Please select a county to generate reports.</p>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
