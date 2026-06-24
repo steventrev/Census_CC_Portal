@@ -253,3 +253,157 @@ async function handleCountyChange() {
                     filteredReportData[tableDef.id] = filtered; 
                     resolve({ success: true, tableDef });
                 },
+                error: function() {
+                    filteredReportData[tableDef.id] = null;
+                    rawTablesCache[tableDef.id] = null;
+                    resolve({ success: false, tableDef });
+                }
+            });
+        });
+    });
+
+    await Promise.all(fetchPromises);
+    renderAllReportTables();
+    downloadAllBtn.disabled = false; 
+}
+
+// Step 4: Render UI Tables with Hyperlinked Sources
+function renderAllReportTables() {
+    reportContainer.innerHTML = ""; 
+    const stateFolder = stateSelect.value;
+    const stateFips = getSelectedStateFIPS();
+
+    CENSUS_TABLES.forEach(tableDef => {
+        if (!tableDef.render) return; 
+
+        const data = filteredReportData[tableDef.id];
+        const section = document.createElement('div');
+        section.className = 'table-section';
+
+        const headerContainer = document.createElement('div');
+        headerContainer.className = 'table-header-container';
+        headerContainer.style.display = 'block'; 
+        headerContainer.style.marginBottom = '12px';
+        
+        const title = document.createElement('h3');
+        title.style.margin = '0 0 4px 0';
+        title.textContent = tableDef.title;
+        headerContainer.appendChild(title);
+
+        const countyFips = discoverCountyFIPS(tableDef.id);
+
+        if (tableDef.sources && tableDef.sources.length > 0) {
+            const sourceDiv = document.createElement('div');
+            sourceDiv.style.fontSize = '12px';
+            sourceDiv.style.color = '#666';
+            sourceDiv.style.marginBottom = '6px';
+            sourceDiv.innerHTML = `<strong>Data Source (${countySelect.value || 'Selected County'}):</strong> `;
+            
+            if (tableDef.id === "02") {
+                const stateMeta = tableDef.sources[0].getStateSource(stateFolder);
+                const a = document.createElement('a');
+                a.href = stateMeta.url;
+                a.target = '_blank';
+                a.style.color = '#0056b3';
+                a.style.textDecoration = 'underline';
+                a.textContent = stateMeta.label;
+                sourceDiv.appendChild(a);
+            } else {
+                tableDef.sources.forEach((src, idx) => {
+                    const a = document.createElement('a');
+                    const finalUrl = countyFips 
+                        ? src.url(stateFips, countyFips) 
+                        : src.url(stateFips, "*").replace("g=050XX00US", "g=040XX00US");
+
+                    a.href = finalUrl;
+                    a.target = '_blank';
+                    a.style.color = '#0056b3';
+                    a.style.textDecoration = 'underline';
+                    a.textContent = src.label;
+                    sourceDiv.appendChild(a);
+                    
+                    if (idx < tableDef.sources.length - 1) {
+                        sourceDiv.appendChild(document.createTextNode(' | '));
+                    }
+                });
+            }
+            headerContainer.appendChild(sourceDiv);
+        }
+        
+        section.appendChild(headerContainer);
+
+        if (data && data.length > 0) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'table-wrapper';
+            wrapper.innerHTML = generateHtmlTableString(data);
+            section.appendChild(wrapper);
+        } else {
+            const errorMsg = document.createElement('p');
+            errorMsg.style.color = '#aa0000';
+            errorMsg.textContent = "Data breakdown unavailable or source file missing matching county entries.";
+            section.appendChild(errorMsg);
+        }
+
+        reportContainer.appendChild(section);
+    });
+}
+
+function generateHtmlTableString(data) {
+    const headers = Object.keys(data[0]);
+    let html = '<table><thead><tr>';
+    headers.forEach(h => html += `<th>${h}</th>`);
+    html += '</tr></thead><tbody>';
+
+    data.forEach(row => {
+        html += '<tr>';
+        headers.forEach(h => html += `<td>${row[h] || ''}</td>`);
+        html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    return html;
+}
+
+// --- BUNDLED ZIP DOWNLOAD LOGIC ---
+function downloadAllAsZip() {
+    const zip = new JSZip();
+    const stateFolder = stateSelect.value;
+    const selectedCounty = countySelect.value.replace(/\s+/g, '_'); 
+
+    CENSUS_TABLES.forEach(tableDef => {
+        if (tableDef.id === "01" || tableDef.id === "02") {
+            const rawData = rawTablesCache[tableDef.id];
+            if (rawData && rawData.length > 0) {
+                const csv = Papa.unparse(rawData);
+                zip.file(`${tableDef.file}.csv`, csv);
+            }
+        } else {
+            const filteredData = filteredReportData[tableDef.id];
+            if (filteredData && filteredData.length > 0) {
+                const csv = Papa.unparse(filteredData);
+                zip.file(`${tableDef.file}_${selectedCounty}.csv`, csv);
+            }
+        }
+    });
+
+    downloadAllBtn.textContent = "Zipping files...";
+    downloadAllBtn.disabled = true;
+
+    zip.generateAsync({ type: "blob" }).then(function (content) {
+        const url = URL.createObjectURL(content);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${stateFolder}_${selectedCounty}_Census_CC_Data.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        downloadAllBtn.textContent = "Download All Data (.ZIP)";
+        downloadAllBtn.disabled = false;
+    });
+}
+
+// --- INITIALIZATION GATEWAY ---
+if (stateSelect.value === '21_Kentucky') {
+    handleStateChange();
+}
