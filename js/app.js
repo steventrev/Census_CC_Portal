@@ -1,5 +1,4 @@
 // All 11 tables mapped directly to the API endpoints and table IDs utilized in Census_CC_Data.py
-// The urls are functions that dynamically inject both the selected state and county FIPS codes.
 const CENSUS_TABLES = [
     { 
         id: "01", 
@@ -7,8 +6,8 @@ const CENSUS_TABLES = [
         title: "01 County Population Rank", 
         render: true,
         sources: [
-            { label: "2010 SF1 (Table P1)", url: (sFips, cFips) => `https://data.census.gov/table/DECENNIALSF12010.P1?g=050XX00US${sFips}${cFips}` },
-            { label: "2020 DHC (Table P1)", url: (sFips, cFips) => `https://data.census.gov/table/DECENNIALDHC2020.P1?g=050XX00US${sFips}${cFips}` }
+            { label: "2010 SF1 (Table P1)", url: (sFips, cFips) => `https://data.census.gov/table/DECENNIALSF12010.P1?g=0500000US${sFips}${cFips}` },
+            { label: "2020 DHC (Table P1)", url: (sFips, cFips) => `https://data.census.gov/table/DECENNIALDHC2020.P1?g=0500000US${sFips}${cFips}` }
         ]
     },
     { 
@@ -29,7 +28,6 @@ const CENSUS_TABLES = [
                     } else if (stateFolder.includes("Illinois")) {
                         return { label: "Illinois Department of Public Health (May 2024)", url: "https://dph.illinois.gov/data-statistics/vital-statistics/illinois-population-data.html" };
                     } else {
-                        // General Fallback default parameter
                         return { label: "State Data Center Population Projections", url: "https://data.census.gov" };
                     }
                 }
@@ -42,9 +40,9 @@ const CENSUS_TABLES = [
         title: "03 Population Age", 
         render: true,
         sources: [
-            { label: "2000 SF1 (Table P012)", url: (sFips, cFips) => `https://data.census.gov/table/DECENNIALSF12000.P012?g=050XX00US${sFips}${cFips}` },
-            { label: "2010 SF1 (Table P12)", url: (sFips, cFips) => `https://data.census.gov/table/DECENNIALSF12010.P12?g=050XX00US${sFips}${cFips}` },
-            { label: "2020 DHC (Table P12)", url: (sFips, cFips) => `https://data.census.gov/table/DECENNIALDHC2020.P12?g=050XX00US${sFips}${cFips}` }
+            { label: "2000 SF1 (Table P012)", url: (sFips, cFips) => `https://data.census.gov/table/DECENNIALSF12000.P012?g=0500000US${sFips}${cFips}` },
+            { label: "2010 SF1 (Table P12)", url: (sFips, cFips) => `https://data.census.gov/table/DECENNIALSF12010.P12?g=0500000US${sFips}${cFips}` },
+            { label: "2020 DHC (Table P12)", url: (sFips, cFips) => `https://data.census.gov/table/DECENNIALDHC2020.P12?g=0500000US${sFips}${cFips}` }
         ]
     },
     { 
@@ -53,7 +51,7 @@ const CENSUS_TABLES = [
         title: "04 Race", 
         render: true,
         sources: [
-            { label: "2020 DHC (Table P5)", url: (sFips, cFips) => `https://data.census.gov/table/DECENNIALDHC2020.P5?g=050XX00US${sFips}${cFips}` }
+            { label: "2020 DHC (Table P5)", url: (sFips, cFips) => `https://data.census.gov/table/DECENNIALDHC2020.P5?g=0500000US${sFips}${cFips}` }
         ]
     },
     { 
@@ -62,7 +60,7 @@ const CENSUS_TABLES = [
         title: "05 Labor", 
         render: true,
         sources: [
-            { label: "2024 ACS 5-Year Detailed Table (Table B23025)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.B23025?g=050XX00US${sFips}${cFips}` }
+            { label: "2024 ACS 5-Year Detailed Table (Table B23025)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.B23025?g=0500000US${sFips}${cFips}` }
         ]
     },
     { 
@@ -71,7 +69,7 @@ const CENSUS_TABLES = [
         title: "06 Industry", 
         render: true,
         sources: [
-            { label: "2024 ACS 5-Year Detailed Table (Table C24070)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.C24070?g=050XX00US${sFips}${cFips}` }
+            { label: "2024 ACS 5-Year Detailed Table (Table C24070)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.C24070?g=0500000US${sFips}${cFips}` }
         ]
     },
     { 
@@ -80,10 +78,10 @@ const CENSUS_TABLES = [
         title: "07 Income", 
         render: true,
         sources: [
-            { label: "Median HH Income (Table B19013)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.B19013?g=050XX00US${sFips}${cFips}` },
-            { label: "Per Capita Income (Table B19301)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.B19301?g=050XX00US${sFips}${cFips}` },
-            { label: "Gini Index (Table B19083)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.B19083?g=050XX00US${sFips}${cFips}` },
-            { label: "Poverty Status (Table C17002)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.C17002?g=050XX00US${sFips}${cFips}` }
+            { label: "Median HH Income (Table B19013)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.B19013?g=0500000US${sFips}${cFips}` },
+            { label: "Per Capita Income (Table B19301)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.B19301?g=0500000US${sFips}${cFips}` },
+            { label: "Gini Index (Table B19083)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.B19083?g=0500000US${sFips}${cFips}` },
+            { label: "Poverty Status (Table C17002)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.C17002?g=0500000US${sFips}${cFips}` }
         ]
     },
     { 
@@ -92,7 +90,7 @@ const CENSUS_TABLES = [
         title: "08 Disability", 
         render: true,
         sources: [
-            { label: "2024 ACS 5-Year Detailed Table (Table C18108)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.C18108?g=050XX00US${sFips}${cFips}` }
+            { label: "2024 ACS 5-Year Detailed Table (Table C18108)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.C18108?g=0500000US${sFips}${cFips}` }
         ]
     },
     { 
@@ -101,7 +99,7 @@ const CENSUS_TABLES = [
         title: "09 Limited English", 
         render: true,
         sources: [
-            { label: "2024 ACS 5-Year Detailed Table (Table C16002)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.C16002?g=050XX00US${sFips}${cFips}` }
+            { label: "2024 ACS 5-Year Detailed Table (Table C16002)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDT5Y2024.C16002?g=0500000US${sFips}${cFips}` }
         ]
     },
     { 
@@ -110,7 +108,7 @@ const CENSUS_TABLES = [
         title: "10 Housing", 
         render: true,
         sources: [
-            { label: "2024 ACS 5-Year Data Profile (Table DP04)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDP5Y2024.DP04?g=050XX00US${sFips}${cFips}` }
+            { label: "2024 ACS 5-Year Data Profile (Table DP04)", url: (sFips, cFips) => `https://data.census.gov/table/ACSDP5Y2024.DP04?g=0500000US${sFips}${cFips}` }
         ]
     },
     { 
@@ -119,7 +117,7 @@ const CENSUS_TABLES = [
         title: "11 Commuting", 
         render: true,
         sources: [
-            { label: "2024 ACS 5-Year Subject Table (Table S0801)", url: (sFips, cFips) => `https://data.census.gov/table/ACSST5Y2024.S0801?g=050XX00US${sFips}${cFips}` }
+            { label: "2024 ACS 5-Year Subject Table (Table S0801)", url: (sFips, cFips) => `https://data.census.gov/table/ACSST5Y2024.S0801?g=0500000US${sFips}${cFips}` }
         ]
     }
 ];
@@ -145,16 +143,19 @@ function getSelectedStateFIPS() {
 }
 
 // Inspects the filtered county data arrays to locate and extract the unique 3-digit county FIPS code
-function discoverCountyFIPS(tableId) {
-    const data = filteredReportData[tableId];
-    if (!data || data.length === 0) return "";
-    
-    for (let row of data) {
-        if (row.COUNTY && row.COUNTY.trim() !== "" && !isNaN(row.COUNTY)) {
-            return row.COUNTY.trim().padStart(3, '0');
-        }
-        if (row.fips5 && row.fips5.trim() !== "" && row.fips5.length >= 5) {
-            return row.fips5.trim().slice(-3);
+// Inspects ALL filtered county data arrays globally to locate and extract the unique 3-digit county FIPS code
+function discoverCountyFIPS() {
+    for (let tableId in filteredReportData) {
+        const data = filteredReportData[tableId];
+        if (!data || data.length === 0) continue;
+        
+        for (let row of data) {
+            if (row.COUNTY && row.COUNTY.trim() !== "" && !isNaN(row.COUNTY)) {
+                return row.COUNTY.trim().padStart(3, '0');
+            }
+            if (row.fips5 && row.fips5.trim() !== "" && row.fips5.length >= 5) {
+                return row.fips5.trim().slice(-3);
+            }
         }
     }
     return "";
@@ -319,7 +320,7 @@ function renderAllReportTables() {
         title.textContent = tableDef.title;
         headerContainer.appendChild(title);
 
-        const countyFips = discoverCountyFIPS(tableDef.id);
+        const countyFips = discoverCountyFIPS();
 
         if (tableDef.sources && tableDef.sources.length > 0) {
             const sourceDiv = document.createElement('div');
@@ -342,7 +343,7 @@ function renderAllReportTables() {
                     const a = document.createElement('a');
                     const finalUrl = countyFips 
                         ? src.url(stateFips, countyFips) 
-                        : src.url(stateFips, "*").replace("g=050XX00US", "g=040XX00US");
+                        : src.url(stateFips, "").replace("g=0500000US", "g=0400000US");
 
                     a.href = finalUrl;
                     a.target = '_blank';
