@@ -40,6 +40,7 @@ function handleStateChange() {
     if (stateFolder) {
         reportContainer.innerHTML = `<em>Loading county parameters for ${stateName}...</em>`;
         
+        // We use 04_Race because it reliably uses the standard GEO_1 field to list counties
         Papa.parse(`data/${stateFolder}/04_Race.csv`, {
             download: true,
             header: true,
@@ -94,10 +95,30 @@ async function handleCountyChange() {
                 complete: function(results) {
                     rawTablesCache[tableDef.id] = results.data; // Full un-sliced file backup preserved here
 
-                    // Apply geographic slice rule
+                    // Robust polymorphic filter to handle different geographic headers
                     const filtered = results.data.filter(row => {
-                        const geo1 = row.GEO_1 ? row.GEO_1.trim() : '';
-                        return geo1 === '' || geo1.toLowerCase() === selectedCounty.toLowerCase();
+                        const targetCountyLower = selectedCounty.toLowerCase().trim();
+
+                        // Variant A: Standard Tables (03-11)
+                        if ('GEO_1' in row) {
+                            const geo1 = row.GEO_1 ? row.GEO_1.trim() : '';
+                            return geo1 === '' || geo1.toLowerCase() === targetCountyLower;
+                        }
+                        
+                        // Variant B: Table 01 (NAME column like "Clay County, Illinois")
+                        if ('NAME' in row) {
+                            const nameVal = row.NAME ? row.NAME.toLowerCase().trim() : '';
+                            return nameVal.includes(targetCountyLower);
+                        }
+
+                        // Variant C: Table 02 (Location column like "Clay County")
+                        if ('Location' in row) {
+                            const locVal = row.Location ? row.Location.toLowerCase().trim() : '';
+                            return locVal === targetCountyLower;
+                        }
+
+                        // Fallback fallback if structure doesn't match known variables
+                        return false;
                     });
                     
                     filteredReportData[tableDef.id] = filtered; // County slice backup stored here
@@ -117,12 +138,12 @@ async function handleCountyChange() {
     downloadAllBtn.disabled = false; 
 }
 
-// Step 4: Render UI Tables (All 11 are now visible)
+// Step 4: Render UI Tables (All 11 are visible)
 function renderAllReportTables() {
     reportContainer.innerHTML = ""; 
 
     CENSUS_TABLES.forEach(tableDef => {
-        if (!tableDef.render) return; // Guard clause (ready in case you hide any later)
+        if (!tableDef.render) return; 
 
         const data = filteredReportData[tableDef.id];
         const section = document.createElement('div');
@@ -144,7 +165,7 @@ function renderAllReportTables() {
         } else {
             const errorMsg = document.createElement('p');
             errorMsg.style.color = '#aa0000';
-            errorMsg.textContent = "Data breakdown unavailable or source file missing path resolution mapping.";
+            errorMsg.textContent = "Data breakdown unavailable or source file missing matching county entries.";
             section.appendChild(errorMsg);
         }
 
@@ -176,18 +197,18 @@ function downloadAllAsZip() {
 
     CENSUS_TABLES.forEach(tableDef => {
         if (tableDef.id === "01" || tableDef.id === "02") {
-            // SUCCESS: Grab full un-sliced array for 01 and 02
+            // Grab full un-sliced array for 01 and 02
             const rawData = rawTablesCache[tableDef.id];
             if (rawData && rawData.length > 0) {
                 const csv = Papa.unparse(rawData);
-                zip.file(`${tableDef.file}.csv`, csv);
+                zip.file(`${tableDef.file}_Full.csv`, csv);
             }
         } else {
             // Grab filtered slices for 03 through 11
             const filteredData = filteredReportData[tableDef.id];
             if (filteredData && filteredData.length > 0) {
                 const csv = Papa.unparse(filteredData);
-                zip.file(`${tableDef.file}_${selectedCounty}.csv`, csv);
+                zip.file(`${tableDef.file}_Filtered_${selectedCounty}.csv`, csv);
             }
         }
     });
@@ -199,7 +220,7 @@ function downloadAllAsZip() {
         const url = URL.createObjectURL(content);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${stateFolder}_${selectedCounty}_Census_CC_Data.zip`;
+        link.download = `${stateFolder}_${selectedCounty}_Census_Data.zip`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
