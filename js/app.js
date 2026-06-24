@@ -190,17 +190,46 @@ function handleStateChange() {
     }
 }
 
-// Step 2: Populate Dropdown List
+// Step 2: Populate Dropdown List (Fixed to support dynamic headers and clean county matching)
 function populateCounties(data) {
-    const counties = [...new Set(data.map(row => row.GEO_1).filter(geo => geo && geo.trim() !== ''))];
+    if (!data || data.length === 0) return;
+
+    // Detect which column header is present in this dataset
+    const firstRow = data[0];
+    let countyKey = 'GEO_1'; // Default fallback
+    if (!('GEO_1' in firstRow)) {
+        if ('NAME' in firstRow) {
+            countyKey = 'NAME';
+        } else if ('Location' in firstRow) {
+            countyKey = 'Location';
+        }
+    }
+
+    // Extract, clean, and deduplicate county values
+    let rawCounties = data.map(row => {
+        let val = row[countyKey];
+        if (!val) return '';
+        val = val.trim();
+        
+        // If it's a standard Census full name (e.g., "Fayette County, Kentucky"), 
+        // extract just the county name part so it works with all other tables
+        if (countyKey === 'NAME' && val.includes(',')) {
+            val = val.split(',')[0].trim();
+        }
+        return val;
+    }).filter(geo => geo !== '');
+
+    const counties = [...new Set(rawCounties)];
     counties.sort();
 
+    // Populate the HTML select option elements
     counties.forEach(county => {
         const option = document.createElement('option');
         option.value = county;
         option.textContent = county;
         countySelect.appendChild(option);
     });
+    
     countySelect.disabled = false;
 }
 
