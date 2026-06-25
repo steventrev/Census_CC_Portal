@@ -394,20 +394,31 @@ function generateHtmlTableString(data) {
     return html;
 }
 
-// --- BUNDLED ZIP DOWNLOAD LOGIC ---
-function downloadAllAsZip() {
+// --- BUNDLED ZIP DOWNLOAD LOGIC (Preserves 01 and 02 exactly as-is from disk) ---
+async function downloadAllAsZip() {
     const zip = new JSZip();
     const stateFolder = stateSelect.value;
     const selectedCounty = countySelect.value.replace(/\s+/g, '_'); 
 
-    CENSUS_TABLES.forEach(tableDef => {
+    downloadAllBtn.textContent = "Gathering files...";
+    downloadAllBtn.disabled = true;
+
+    // Use a Promise loop to handle asynchronous file fetching and generation cleanly
+    const zipPromises = CENSUS_TABLES.map(async (tableDef) => {
         if (tableDef.id === "01" || tableDef.id === "02") {
-            const rawData = rawTablesCache[tableDef.id];
-            if (rawData && rawData.length > 0) {
-                const csv = Papa.unparse(rawData);
-                zip.file(`${tableDef.file}.csv`, csv);
+            try {
+                // Fetch the exact raw text file content straight from the server disk
+                const response = await fetch(`data/${stateFolder}/${tableDef.file}.csv`);
+                if (response.ok) {
+                    const rawText = await response.text();
+                    // Package it into the zip with original naming, spacing, and column orders
+                    zip.file(`${tableDef.file}.csv`, rawText);
+                }
+            } catch (err) {
+                console.error(`Could not attach raw file for ${tableDef.file}:`, err);
             }
         } else {
+            // For tables 03 through 11, continue saving the filtered county slices
             const filteredData = filteredReportData[tableDef.id];
             if (filteredData && filteredData.length > 0) {
                 const csv = Papa.unparse(filteredData);
@@ -416,8 +427,10 @@ function downloadAllAsZip() {
         }
     });
 
-    downloadAllBtn.textContent = "Zipping files...";
-    downloadAllBtn.disabled = true;
+    // Wait until all files are successfully gathered and bundled
+    await Promise.all(zipPromises);
+
+    downloadAllBtn.textContent = "Zipping archive...";
 
     zip.generateAsync({ type: "blob" }).then(function (content) {
         const url = URL.createObjectURL(content);
