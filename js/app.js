@@ -175,7 +175,7 @@ let filteredReportData = {};
 let fipsLookupMap = {}; // Structural O(1) county lookup cache
 let stateLookupMap = {}; // State name metadata lookup dictionary
 let projectionSourcesMap = {}; // State projection credential metadata dictionary
-let allLookedUpCounties = []; // Base elements read from lookup_county.csv
+let allLookedUpCounties = []; // Base elements read from countystateFIPS.csv
 
 const stateSelect = document.getElementById("stateSelect");
 const countySelect = document.getElementById("countySelect");
@@ -224,7 +224,7 @@ function lookupGeographicMetadata() {
 
 // Parses and caches county tracking parameters
 function initFipsLookupTable() {
-  Papa.parse("lookup_county.csv", {
+  Papa.parse("countystateFIPS.csv", {
     download: true,
     header: true,
     skipEmptyLines: true,
