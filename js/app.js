@@ -269,15 +269,16 @@ function initProjectionSourcesTable() {
     download: true,
     header: true,
     skipEmptyLines: true,
-    // BEFORE PROCESSING: Standardize all column header keys to clean lowercase text
-    transformHeader: function(header) {
-      return header.replace(/^\uFEFF/, "").trim().toLowerCase();
+    transformHeader: function (header) {
+      return header
+        .replace(/^\uFEFF/, "")
+        .trim()
+        .toLowerCase();
     },
     complete: function (results) {
       let activeStates = [];
 
       results.data.forEach((row) => {
-        // Safe check for fips column
         if (!row.fips) return;
 
         const stateFips = row.fips.trim().padStart(2, "0");
@@ -289,7 +290,7 @@ function initProjectionSourcesTable() {
           vintage: row.vintage ? row.vintage.trim() : "",
         };
 
-        // Check if both url and source contain data
+        // UI Injection Guard: Only build dropdown option tags if active source links are detected
         if (row.url && row.source) {
           activeStates.push({
             value: `${stateFips}_${stateName.replace(/\s+/g, "")}`,
@@ -309,11 +310,13 @@ function initProjectionSourcesTable() {
         option.textContent = state.name;
         stateSelect.appendChild(option);
 
+        // Track the value that matches Kentucky case-insensitively
         if (state.name.trim().toLowerCase() === "kentucky") {
           defaultStateValue = state.value;
         }
       });
 
+      // Explicitly set selection default post-loop
       if (defaultStateValue) {
         stateSelect.value = defaultStateValue;
       }
