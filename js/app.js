@@ -265,7 +265,7 @@ function initFipsLookupTable() {
 
 // Reads metadata matrix and dynamically constructs active UI Dropdown options
 function initProjectionSourcesTable() {
-  Papa.parse("projection_sources.csv", {
+  Papa.parse("/data/projection_sources.csv", {
     download: true,
     header: true,
     skipEmptyLines: true,
