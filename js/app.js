@@ -224,7 +224,7 @@ function lookupGeographicMetadata() {
 
 // Parses and caches county tracking parameters
 function initFipsLookupTable() {
-  Papa.parse("countystateFIPS.csv", {
+  Papa.parse("data/countystateFIPS.csv", {
     download: true,
     header: true,
     skipEmptyLines: true,
@@ -265,16 +265,10 @@ function initFipsLookupTable() {
 
 // Reads metadata matrix and dynamically constructs active UI Dropdown options
 function initProjectionSourcesTable() {
-  Papa.parse("/data/projection_sources.csv", {
+  Papa.parse("data/projection_sources.csv", {
     download: true,
     header: true,
     skipEmptyLines: true,
-    transformHeader: function (header) {
-      return header
-        .replace(/^\uFEFF/, "")
-        .trim()
-        .toLowerCase();
-    },
     complete: function (results) {
       let activeStates = [];
 
