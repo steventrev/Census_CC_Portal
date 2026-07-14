@@ -1,19 +1,19 @@
 # Census_CC_Portal
 
 A lightweight client-side viewer & downloader for county-level Census and state projection data.
+
 Accessible @ https://steventrev.github.io/Census_CC_Portal/
 
 ## Quickstart
 
-1. Optional self-hosting: start a local HTTP server in the project folder (required for CSV operations):
+1. Optional: Start a local HTTP server in the project folder (required for CSV operations) and navigate to `http://localhost:8000`:
 
      ```bash
      python -m http.server 8000
      ```
 
-2. Navigate to `https://steventrev.github.io/Census_CC_Portal/` (or `http://localhost:8000`)
-3. Select a State and County in the dropdown boxes
-4. View available data or click **Download All Data (.ZIP)** to export county-level files
+2. Select a State and County in the dropdown boxes
+3. View available data and click **Download All Data (.ZIP)** to export county-level files
 
 ## Data Structure
 
