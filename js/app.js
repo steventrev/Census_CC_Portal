@@ -296,13 +296,24 @@ function initProjectionSourcesTable() {
       activeStates.sort((a, b) => a.name.localeCompare(b.name));
       stateSelect.innerHTML = '<option value="">-- Select State --</option>';
 
+      let defaultStateValue = "";
+
       activeStates.forEach((state) => {
         const option = document.createElement("option");
         option.value = state.value;
         option.textContent = state.name;
-        if (state.name === "Kentucky") option.selected = true; // Fallback preset default hook
         stateSelect.appendChild(option);
+
+        // Safely check for Kentucky (ignoring leading/trailing spaces and letter casing)
+        if (state.name.trim().toLowerCase() === "kentucky") {
+          defaultStateValue = state.value;
+        }
       });
+
+      // Directly set the dropdown's value after all options are loaded
+      if (defaultStateValue) {
+        stateSelect.value = defaultStateValue;
+      }
 
       console.log("Dynamic state dropdown compiled successfully.");
       if (stateSelect.value) handleStateChange();
