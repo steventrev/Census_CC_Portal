@@ -1,0 +1,109 @@
+/* Core Application Layout Rules */
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.controls {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 5px;
+  border: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+label {
+  font-weight: bold;
+}
+
+select,
+button {
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+button {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+button:hover {
+  background-color: #218838;
+}
+
+button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Dynamic Grid Report Sections */
+.table-section {
+  margin-bottom: 30px;
+}
+
+.table-header-container {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.table-title {
+  margin: 0 0 4px 0;
+}
+
+.table-source-info {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.table-source-link {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.table-error-message {
+  color: #aa0000;
+  font-weight: bold;
+}
+
+/* Scrollable Responsive Data Matrix Windows */
+.table-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  margin-bottom: 20px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+
+th,
+td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+th {
+  background-color: #f4f4f4;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+tr:nth-child(even) {
+  background-color: #f9f9f9;
+}

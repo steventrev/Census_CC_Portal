@@ -1,61 +1,38 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Qk4 Census Community Characteristics Portal</title>
+    <link rel="stylesheet" href="style.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; color: #333; }
-        .controls { margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 5px; border: 1px solid #e0e0e0; display: flex; align-items: center; flex-wrap: wrap; gap: 15px; }
-        label { font-weight: bold; }
-        select, button { padding: 8px 12px; font-size: 14px; cursor: pointer; }
-        button { background-color: #28a745; color: white; border: none; border-radius: 4px; font-weight: bold; }
-        button:hover { background-color: #218838; }
-        button:disabled { background-color: #cccccc; cursor: not-allowed; }
-        
-        /* Table layout styles */
-        .table-section { margin-top: 40px; }
-        .table-header-container { margin-bottom: 8px; border-bottom: 2px solid #333; padding-bottom: 5px; }
-        .table-header-container h3 { margin: 0; text-transform: capitalize; }
-        .table-wrapper { max-height: 400px; overflow-y: auto; border: 1px solid #ccc; margin-bottom: 20px; }
-        table { border-collapse: collapse; width: 100%; font-size: 13px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f4f4f4; position: sticky; top: 0; z-index: 10; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-    </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <h2>Qk4 Census Community Characteristics Portal</h2>
-    
+
     <div class="controls">
-        <div>
-            <label for="stateSelect">State:</label>
-            <select id="stateSelect">
-                <option value="">-- Select State --</option>
-                <option value="17_Illinois">Illinois</option>
-                <option value="18_Indiana">Indiana</option>
-                <option value="21_Kentucky" selected>Kentucky</option>
-                <option value="47_Tennessee">Tennessee</option>
-            </select>
-        </div>
+      <div>
+        <label for="stateSelect">State:</label>
+        <select id="stateSelect">
+          <option value="">-- Select State --</option>
+        </select>
+      </div>
 
-        <div>
-            <label for="countySelect">County:</label>
-            <select id="countySelect" disabled>
-                <option value="">-- Select County --</option>
-            </select>
-        </div>
+      <div>
+        <label for="countySelect">County:</label>
+        <select id="countySelect" disabled>
+          <option value="">-- Select County --</option>
+        </select>
+      </div>
 
-        <button id="downloadAllBtn" disabled>Download All Data (.ZIP)</button>
+      <button id="downloadAllBtn" disabled>Download All Data (.ZIP)</button>
     </div>
 
     <div id="reportContainer">
-        <p>Please select a county to generate reports.</p>
+      <p>Please select a state and county to generate reports.</p>
     </div>
 
-    <script src="js/app.js"></script>
-</body>
+    <script src="app.js"></script>
+  </body>
 </html>

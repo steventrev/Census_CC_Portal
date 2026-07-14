@@ -23,39 +23,7 @@ const CENSUS_TABLES = [
     file: "02_Population_Projections",
     title: "02 Population Projections",
     render: true,
-    sources: [
-      {
-        // Contextual function looking directly at the selected state folder string name
-        getStateSource: (stateFolder) => {
-          if (stateFolder.includes("Indiana")) {
-            return {
-              label: "Indiana Business Research Center (July 2024)",
-              url: "https://www.stats.indiana.edu/pop_proj/",
-            };
-          } else if (stateFolder.includes("Kentucky")) {
-            return {
-              label: "Kentucky State Data Center (August 2022)",
-              url: "https://centers.louisville.edu/kentucky-state-data-center/data-downloads",
-            };
-          } else if (stateFolder.includes("Tennessee")) {
-            return {
-              label: "Tennessee State Data Center (August 2024)",
-              url: "https://tnsdc.utk.edu/estimates-and-projections/boyd-center-population-projections/",
-            };
-          } else if (stateFolder.includes("Illinois")) {
-            return {
-              label: "Illinois Department of Public Health (May 2024)",
-              url: "https://dph.illinois.gov/data-statistics/vital-statistics/illinois-population-data.html",
-            };
-          } else {
-            return {
-              label: "State Data Center Population Projections",
-              url: "https://data.census.gov",
-            };
-          }
-        },
-      },
-    ],
+    sources: [], // Dynamically extracted from projection_sources.csv
   },
   {
     id: "03",
@@ -201,8 +169,13 @@ const CENSUS_TABLES = [
   },
 ];
 
-let rawTablesCache = {};
+// Structural Runtime State Stores
+let indexedTablesCache = {}; // High-performance mapping: [tableId][normalizedCountyName] -> array rows
 let filteredReportData = {};
+let fipsLookupMap = {}; // Structural O(1) county lookup cache
+let stateLookupMap = {}; // State name metadata lookup dictionary
+let projectionSourcesMap = {}; // State projection credential metadata dictionary
+let allLookedUpCounties = []; // Base elements read from lookup_county.csv
 
 const stateSelect = document.getElementById("stateSelect");
 const countySelect = document.getElementById("countySelect");
@@ -213,110 +186,183 @@ stateSelect.addEventListener("change", handleStateChange);
 countySelect.addEventListener("change", handleCountyChange);
 downloadAllBtn.addEventListener("click", downloadAllAsZip);
 
-// Pulls the 2-digit state FIPS code safely from selection payload (e.g., "21_Kentucky" -> "21")
-function getSelectedStateFIPS() {
-  const val = stateSelect.value;
-  if (!val) return "";
-  const match = val.match(/^(\d+)_/);
-  return match ? match[1] : "";
+// Fast functional normalization of geographic string elements
+function cleanGeographicString(str) {
+  return (str || "")
+    .toLowerCase()
+    .split(",")[0]
+    .replace(/\bcounty\b/gi, "")
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
 }
 
-// Inspects ALL filtered county data arrays globally to locate and extract the unique 3-digit county FIPS code
-function discoverCountyFIPS() {
-  for (let tableId in filteredReportData) {
-    const data = filteredReportData[tableId];
-    if (!data || data.length === 0) continue;
+// Looks up the 2-digit State FIPS and clean label based on select choice text matching
+function getSelectedStateDetails() {
+  const folderValue = stateSelect.value;
+  if (!folderValue) return { stateFips: "", stateName: "" };
 
-    for (let row of data) {
-      if (row.COUNTY && row.COUNTY.trim() !== "" && !isNaN(row.COUNTY)) {
-        return row.COUNTY.trim().padStart(3, "0");
-      }
-      if (row.fips5 && row.fips5.trim() !== "" && row.fips5.length >= 5) {
-        return row.fips5.trim().slice(-3);
-      }
-    }
-  }
-  return "";
+  const cleanFolderSegment = folderValue
+    .replace(/[^a-zA-Z]/g, "")
+    .toLowerCase();
+  const match = stateLookupMap[cleanFolderSegment];
+  return match
+    ? { stateFips: match.stateFips, stateName: match.stateName }
+    : { stateFips: "", stateName: "" };
 }
 
-// Step 1: Manage State Change
+// Dictionary lookup wrapper for bounding coordinates and target FIPS codes
+function lookupGeographicMetadata() {
+  const { stateFips } = getSelectedStateDetails();
+  const countySelection = countySelect.value;
+  if (!stateFips || !countySelection) return null;
+
+  return (
+    fipsLookupMap[`${stateFips}_${cleanGeographicString(countySelection)}`] ||
+    null
+  );
+}
+
+// Parses and caches county tracking parameters
+function initFipsLookupTable() {
+  Papa.parse("lookup_county.csv", {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function (results) {
+      allLookedUpCounties = results.data;
+
+      results.data.forEach((row) => {
+        if (!row.fips || !row.county) return;
+        const rawFips = row.fips.trim();
+
+        if (rawFips.length <= 2 || !row.county.includes(",")) {
+          const stateFips = rawFips.padStart(2, "0");
+          const stateName = row.county.trim();
+          stateLookupMap[stateName.replace(/[^a-zA-Z]/g, "").toLowerCase()] = {
+            stateFips,
+            stateName,
+          };
+        } else {
+          const fullFips = rawFips.padStart(5, "0");
+          const stateFips = fullFips.slice(0, 2);
+          fipsLookupMap[`${stateFips}_${cleanGeographicString(row.county)}`] = {
+            stateFips: stateFips,
+            countyFips: fullFips.slice(2),
+            bbox: row.bbox,
+          };
+        }
+      });
+      console.log("FIPS metadata dictionaries populated successfully.");
+      initProjectionSourcesTable();
+    },
+    error: (err) =>
+      console.error(
+        "Critical: Geo-lookup structural elements failed to execute.",
+        err,
+      ),
+  });
+}
+
+// Reads metadata matrix and dynamically constructs active UI Dropdown options
+function initProjectionSourcesTable() {
+  Papa.parse("projection_sources.csv", {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function (results) {
+      let activeStates = [];
+
+      results.data.forEach((row) => {
+        if (!row.fips) return;
+
+        const stateFips = row.fips.trim().padStart(2, "0");
+        const stateName = row.county ? row.county.trim() : "";
+
+        projectionSourcesMap[stateFips] = {
+          source: row.source ? row.source.trim() : "",
+          url: row.url ? row.url.trim() : "",
+          vintage: row.vintage ? row.vintage.trim() : "",
+        };
+
+        // UI Injection Guard: Only build dropdown option tags if active source links are detected
+        if (row.url && row.source) {
+          activeStates.push({
+            value: `${stateFips}_${stateName.replace(/\s+/g, "")}`,
+            name: stateName,
+          });
+        }
+      });
+
+      activeStates.sort((a, b) => a.name.localeCompare(b.name));
+      stateSelect.innerHTML = '<option value="">-- Select State --</option>';
+
+      activeStates.forEach((state) => {
+        const option = document.createElement("option");
+        option.value = state.value;
+        option.textContent = state.name;
+        if (state.name === "Kentucky") option.selected = true; // Fallback preset default hook
+        stateSelect.appendChild(option);
+      });
+
+      console.log("Dynamic state dropdown compiled successfully.");
+      if (stateSelect.value) handleStateChange();
+    },
+    error: (err) =>
+      console.error(
+        "Critical: Projection sources structural components failed to load.",
+        err,
+      ),
+  });
+}
+
+// Initialization Entrypoint
+initFipsLookupTable();
+
 function handleStateChange() {
   const stateFolder = stateSelect.value;
-  const stateName = stateSelect.options[stateSelect.selectedIndex].text;
+  const { stateFips, stateName } = getSelectedStateDetails();
 
   countySelect.innerHTML = '<option value="">-- Select County --</option>';
   countySelect.disabled = true;
   downloadAllBtn.disabled = true;
   reportContainer.innerHTML =
     "<p>Please select a county to generate reports.</p>";
-  rawTablesCache = {};
+  indexedTablesCache = {};
   filteredReportData = {};
 
-  if (stateFolder) {
-    reportContainer.innerHTML = `<em>Loading county parameters for ${stateName}...</em>`;
+  if (!stateFolder || !stateFips) return;
+  reportContainer.innerHTML = `<em>Loading county parameters for ${stateName}...</em>`;
 
-    Papa.parse(`data/${stateFolder}/04_Race.csv`, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: function (results) {
-        populateCounties(results.data);
-        reportContainer.innerHTML =
-          "<p>State database connected. Please select a specific county to build reports.</p>";
-      },
-      error: function () {
-        reportContainer.innerHTML = `<p style="color:red;">Failed to resolve directory paths for data/${stateFolder}/04_Race.csv</p>`;
-      },
-    });
-  }
-}
-
-// Step 2: Populate Dropdown List (Fixed to support dynamic headers and clean county matching)
-function populateCounties(data) {
-  if (!data || data.length === 0) return;
-
-  // Detect which column header is present in this dataset
-  const firstRow = data[0];
-  let countyKey = "GEO_1"; // Default fallback
-  if (!("GEO_1" in firstRow)) {
-    if ("NAME" in firstRow) {
-      countyKey = "NAME";
-    } else if ("Location" in firstRow) {
-      countyKey = "Location";
-    }
-  }
-
-  // Extract, clean, and deduplicate county values
-  let rawCounties = data
-    .map((row) => {
-      let val = row[countyKey];
-      if (!val) return "";
-      val = val.trim();
-
-      // If it's a standard Census full name (e.g., "Fayette County, Kentucky"),
-      // extract just the county name part so it works with all other tables
-      if (countyKey === "NAME" && val.includes(",")) {
-        val = val.split(",")[0].trim();
-      }
-      return val;
+  let matchedCounties = allLookedUpCounties
+    .filter((row) => {
+      if (!row.fips) return false;
+      const cleanRowFips = row.fips.trim().padStart(5, "0");
+      return (
+        cleanRowFips.startsWith(stateFips) &&
+        cleanRowFips.length === 5 &&
+        row.county.includes(",")
+      );
     })
-    .filter((geo) => geo !== "");
+    .map((row) => row.county.split(",")[0].trim())
+    .filter((name) => name !== "");
 
-  const counties = [...new Set(rawCounties)];
-  counties.sort();
+  matchedCounties = [...new Set(matchedCounties)].sort();
 
-  // Populate the HTML select option elements
-  counties.forEach((county) => {
-    const option = document.createElement("option");
-    option.value = county;
-    option.textContent = county;
-    countySelect.appendChild(option);
-  });
-
-  countySelect.disabled = false;
+  if (matchedCounties.length > 0) {
+    matchedCounties.forEach((countyName) => {
+      const option = document.createElement("option");
+      option.value = countyName;
+      option.textContent = countyName;
+      countySelect.appendChild(option);
+    });
+    countySelect.disabled = false;
+    reportContainer.innerHTML =
+      "<p>State database connected. Please select a specific county to build reports.</p>";
+  } else {
+    reportContainer.innerHTML = `<p class="table-error-message">No county mappings detected matching state FIPS code ${stateFips}</p>`;
+  }
 }
 
-// Step 3: Parse and Compile Files Asynchronously
 async function handleCountyChange() {
   const stateFolder = stateSelect.value;
   const selectedCounty = countySelect.value;
@@ -330,52 +376,57 @@ async function handleCountyChange() {
 
   reportContainer.innerHTML = `<h3>Generating Comprehensive Assessment for ${selectedCounty}...</h3><p>Processing 11 structural data matrix streams...</p>`;
   filteredReportData = {};
-  rawTablesCache = {};
   downloadAllBtn.disabled = true;
 
   const fetchPromises = CENSUS_TABLES.map((tableDef) => {
     return new Promise((resolve) => {
+      if (indexedTablesCache[tableDef.id]) {
+        filteredReportData[tableDef.id] =
+          indexedTablesCache[tableDef.id][
+            cleanGeographicString(selectedCounty)
+          ] || [];
+        return resolve({ success: true, tableDef });
+      }
+
       Papa.parse(`data/${stateFolder}/${tableDef.file}.csv`, {
         download: true,
         header: true,
         skipEmptyLines: true,
         complete: function (results) {
-          rawTablesCache[tableDef.id] = results.data;
-
-          // Cache the original CSV column header sequence order
-          if (results.meta && results.meta.fields) {
+          if (results.meta?.fields)
             tableDef.originalHeaders = results.meta.fields;
-          }
 
-          const filtered = results.data.filter((row) => {
-            const targetCountyLower = selectedCounty.toLowerCase().trim();
+          const fields = results.meta?.fields || [];
+          const geoKey =
+            fields.find((f) => ["GEO_1", "NAME", "Location"].includes(f)) || "";
+          const tableIndex = {};
 
-            if ("GEO_1" in row) {
-              const geo1 = row.GEO_1 ? row.GEO_1.trim() : "";
-              return geo1 === "" || geo1.toLowerCase() === targetCountyLower;
+          results.data.forEach((row) => {
+            let rowVal = row[geoKey] ? row[geoKey].trim() : "";
+            if (geoKey === "NAME" && rowVal.includes(","))
+              rowVal = rowVal.split(",")[0].trim();
+
+            const cleanKey = rowVal === "" ? "" : cleanGeographicString(rowVal);
+            if (cleanKey === "") {
+              tableDef.summaryRow = row;
+            } else {
+              if (!tableIndex[cleanKey]) tableIndex[cleanKey] = [];
+              tableIndex[cleanKey].push(row);
             }
-
-            if ("NAME" in row) {
-              const nameVal = row.NAME ? row.NAME.toLowerCase().trim() : "";
-              return nameVal.includes(targetCountyLower);
-            }
-
-            if ("Location" in row) {
-              const locVal = row.Location
-                ? row.Location.toLowerCase().trim()
-                : "";
-              return locVal === targetCountyLower;
-            }
-
-            return false;
           });
 
-          filteredReportData[tableDef.id] = filtered;
+          indexedTablesCache[tableDef.id] = tableIndex;
+          let matchedRows =
+            tableIndex[cleanGeographicString(selectedCounty)] || [];
+          if (tableDef.summaryRow)
+            matchedRows = [tableDef.summaryRow, ...matchedRows];
+
+          filteredReportData[tableDef.id] = matchedRows;
           resolve({ success: true, tableDef });
         },
-        error: function () {
+        error: () => {
           filteredReportData[tableDef.id] = null;
-          rawTablesCache[tableDef.id] = null;
+          indexedTablesCache[tableDef.id] = null;
           resolve({ success: false, tableDef });
         },
       });
@@ -387,12 +438,11 @@ async function handleCountyChange() {
   downloadAllBtn.disabled = false;
 }
 
-// Step 4: Render UI Tables with Hyperlinked Sources
 function renderAllReportTables() {
   reportContainer.innerHTML = "";
-  const stateFolder = stateSelect.value;
-  const stateFips = getSelectedStateFIPS();
-  const countyFips = discoverCountyFIPS();
+  const { stateFips, stateName } = getSelectedStateDetails();
+  const geoMetadata = lookupGeographicMetadata();
+  const countyFips = geoMetadata ? geoMetadata.countyFips : "";
 
   CENSUS_TABLES.forEach((tableDef) => {
     if (!tableDef.render) return;
@@ -403,52 +453,50 @@ function renderAllReportTables() {
 
     const headerContainer = document.createElement("div");
     headerContainer.className = "table-header-container";
-    headerContainer.style.display = "block";
-    headerContainer.style.marginBottom = "12px";
 
     const title = document.createElement("h3");
-    title.style.margin = "0 0 4px 0";
+    title.className = "table-title";
     title.textContent = tableDef.title;
     headerContainer.appendChild(title);
 
-    if (tableDef.sources && tableDef.sources.length > 0) {
+    if (
+      (tableDef.sources && tableDef.sources.length > 0) ||
+      tableDef.id === "02"
+    ) {
       const sourceDiv = document.createElement("div");
-      sourceDiv.style.fontSize = "12px";
-      sourceDiv.style.color = "#666";
-      sourceDiv.style.marginBottom = "6px";
+      sourceDiv.className = "table-source-info";
       sourceDiv.innerHTML = `<strong>Data Source (${countySelect.value || "Selected County"}):</strong> `;
 
       if (tableDef.id === "02") {
-        const stateMeta = tableDef.sources[0].getStateSource(stateFolder);
+        const stateMeta = projectionSourcesMap[stateFips];
         const a = document.createElement("a");
-        a.href = stateMeta.url;
+        a.className = "table-source-link";
         a.target = "_blank";
-        a.style.color = "#0056b3";
-        a.style.textDecoration = "underline";
-        a.textContent = stateMeta.label;
+
+        if (stateMeta && stateMeta.url && stateMeta.source) {
+          a.href = stateMeta.url;
+          a.textContent = `${stateMeta.source} (${stateMeta.vintage})`;
+        } else {
+          a.href = "https://data.census.gov";
+          a.textContent = `${stateName} State Data Center Projections`;
+        }
         sourceDiv.appendChild(a);
       } else {
         tableDef.sources.forEach((src, idx) => {
           const a = document.createElement("a");
-          const finalUrl = countyFips
+          a.className = "table-source-link";
+          a.target = "_blank";
+          a.href = countyFips
             ? src.url(stateFips, countyFips)
             : src.url(stateFips, "").replace("g=0500000US", "g=0400000US");
-
-          a.href = finalUrl;
-          a.target = "_blank";
-          a.style.color = "#0056b3";
-          a.style.textDecoration = "underline";
           a.textContent = src.label;
           sourceDiv.appendChild(a);
-
-          if (idx < tableDef.sources.length - 1) {
+          if (idx < tableDef.sources.length - 1)
             sourceDiv.appendChild(document.createTextNode(" | "));
-          }
         });
       }
       headerContainer.appendChild(sourceDiv);
     }
-
     section.appendChild(headerContainer);
 
     if (data && data.length > 0) {
@@ -461,7 +509,7 @@ function renderAllReportTables() {
       section.appendChild(wrapper);
     } else {
       const errorMsg = document.createElement("p");
-      errorMsg.style.color = "#aa0000";
+      errorMsg.className = "table-error-message";
       errorMsg.textContent =
         "Data breakdown unavailable or source file missing matching county entries.";
       section.appendChild(errorMsg);
@@ -471,32 +519,23 @@ function renderAllReportTables() {
   });
 }
 
-// Step 5: Render HTML strings using explicit header constraints
 function generateHtmlTableString(data, originalHeaders) {
-  if (!data || data.length === 0) return "";
+  if (!data?.length) return "";
+  const headers = originalHeaders?.length
+    ? originalHeaders
+    : Object.keys(data[0]);
 
-  const headers =
-    originalHeaders && originalHeaders.length > 0
-      ? originalHeaders
-      : Object.keys(data[0]);
+  const headerRow = headers.map((h) => `<th>${h}</th>`).join("");
+  const bodyRows = data
+    .map((row) => {
+      const cells = headers.map((h) => `<td>${row[h] ?? ""}</td>`).join("");
+      return `<tr>${cells}</tr>`;
+    })
+    .join("");
 
-  let html = "<table><thead><tr>";
-  headers.forEach((h) => (html += `<th>${h}</th>`));
-  html += "</tr></thead><tbody>";
-
-  data.forEach((row) => {
-    html += "<tr>";
-    headers.forEach((h) => {
-      html += `<td>${row[h] !== undefined && row[h] !== null ? row[h] : ""}</td>`;
-    });
-    html += "</tr>";
-  });
-
-  html += "</tbody></table>";
-  return html;
+  return `<table><thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table>`;
 }
 
-// --- BUNDLED ZIP DOWNLOAD LOGIC (Preserves 01 and 02 exactly as-is from disk) ---
 async function downloadAllAsZip() {
   const zip = new JSZip();
   const stateFolder = stateSelect.value;
@@ -506,29 +545,27 @@ async function downloadAllAsZip() {
   downloadAllBtn.disabled = true;
 
   const zipPromises = CENSUS_TABLES.map(async (tableDef) => {
-    if (tableDef.id === "01" || tableDef.id === "02") {
+    if (["01", "02"].includes(tableDef.id)) {
       try {
         const response = await fetch(
           `data/${stateFolder}/${tableDef.file}.csv`,
         );
-        if (response.ok) {
-          const rawText = await response.text();
-          zip.file(`${tableDef.file}.csv`, rawText);
-        }
+        if (response.ok)
+          zip.file(`${tableDef.file}.csv`, await response.text());
       } catch (err) {
         console.error(`Could not attach raw file for ${tableDef.file}:`, err);
       }
     } else {
       const filteredData = filteredReportData[tableDef.id];
-      if (filteredData && filteredData.length > 0) {
-        const csv = Papa.unparse(filteredData);
-        zip.file(`${tableDef.file}_${selectedCounty}.csv`, csv);
-      }
+      if (filteredData?.length)
+        zip.file(
+          `${tableDef.file}_${selectedCounty}.csv`,
+          Papa.unparse(filteredData),
+        );
     }
   });
 
   await Promise.all(zipPromises);
-
   downloadAllBtn.textContent = "Zipping archive...";
 
   zip.generateAsync({ type: "blob" }).then(function (content) {
@@ -543,9 +580,4 @@ async function downloadAllAsZip() {
     downloadAllBtn.textContent = "Download All Data (.ZIP)";
     downloadAllBtn.disabled = false;
   });
-}
-
-// --- INITIALIZATION GATEWAY ---
-if (stateSelect.value === "21_Kentucky") {
-  handleStateChange();
 }
